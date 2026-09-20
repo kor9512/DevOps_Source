@@ -47,7 +47,12 @@ class Handler(BaseHTTPRequestHandler):
         if not TOKEN:
             self._send(503, {"error": "webhook token is not configured"})
             return
-        if not hmac.compare_digest(self.headers.get("Authorization", ""), f"Bearer {TOKEN}"):
+        # Google Calendar push uses X-Goog-Channel-Token. Authorization is
+        # accepted as a local smoke-test fallback, but Google never sends it.
+        supplied = self.headers.get("X-Goog-Channel-Token", "")
+        if not supplied:
+            supplied = self.headers.get("Authorization", "").removeprefix("Bearer ")
+        if not hmac.compare_digest(supplied, TOKEN):
             self._send(401, {"error": "unauthorized"})
             return
         try:
